@@ -1,24 +1,54 @@
 import MovieCard from "../Components/Movie"
 import '../css/Home.css';
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { searchPopularMovies, getPopularMovies } from "../services/api";
 export function Home() {
 
     const [searchQuery, setSearchQuery] = useState("");
+    const [movies , setMovies] = useState([]);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const movies = [
-        {id: 1, title: "Gigga Nigga", release_date: 2026},
-        {id: 1, title: "Janbolot", release_date: 2007},
-        {id: 1, title: "Amin", release_date: 2008},
-    ];
-    const handleSearch = (e) => {
+    useEffect(() => {
+        const loadPopularMovies = async () => {
+            try {
+                const popularMovies = await getPopularMovies()
+                console.log("Movies loaded:", popularMovies);
+                setMovies(popularMovies)
+            }catch(error){
+                console.log(error)
+                setError('Failed to load movies...')
+            }
+            finally {
+                setLoading(false);
+            }
+        }
+        loadPopularMovies()
+
+    }, [])
+
+    const handleSearch = async (e) => {
         e.preventDefault();
-        alert(searchQuery);
-        setSearchQuery("");
-    }; 
+        if(!searchQuery.trim()) return ;
 
-    return  <div className="Home">
+        setLoading(true);
+        setError(null);
+
+        try{
+            const searchResults = await searchPopularMovies(searchQuery);
+            setMovies(searchResults)
+        } catch (error){
+            console.log(error)
+            setError("Failed search movies...")
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return  (
+      <div className="Home">
         <form onSubmit={handleSearch} className="search-form">
-          <input 
+          <input
             type="text"
             placeholder="Search for movie..."
             className="search-input"
@@ -27,14 +57,20 @@ export function Home() {
             />
             <button type="submit" className="search-button">Search</button>
         </form>
-        
+
+        {error && <div className="error-message">{error}</div>}
+
+        {loading ? (
+        <div className="loading">Loading...</div>
+          ) : movies.length > 0 ? (
         <div className="movies-grid">
-            {movies.map(
-                (movie) =>
-                movie.title.toLowerCase().startsWith(searchQuery) && (
+            {movies.map((movie) => (
                 <MovieCard movie={movie} key={movie.id}/>
-                )
-            )}
-        </div>
-    </div> 
+            ))}
+            </div>
+          ) : (
+            <div className="no-results">No movies found</div>
+          )}
+    </div>
+    );
 }
